@@ -5,38 +5,65 @@ Disciplina: Inteligencia Artificial
 Professor: Elmer A. G. Penaloza
 
 Trabalho 2 - Logica Fuzzy
+Diagnostico de cancer de mama
 %}
 
 
 clc, close all, clear all
 
+% Obter os dados do banco
+dados = readtable('data.csv');
+
+area = dados.Var6;
+perimetro = dados.Var5;
+uniformidade = dados.Var23 - dados.Var3;
+homogeniedade = dados.Var31 - dados.Var11;
+diagnostico = dados.Var2;
 
 % Fuzzy Inference System
 % Mamdani
 fis = newfis('trabalho2IA');
 
-fis = addvar(fis, 'input', 'servico', [0 10]);
-% Funcoes de pertinencia entrada 1 (servico)
-fis = addmf(fis, 'input', 1, 'ruim', 'gaussmf', [1.5 0]);
-fis = addmf(fis, 'input', 1, 'bom', 'gaussmf', [1.5 5]);
-fis = addmf(fis, 'input', 1, 'excelente', 'gaussmf', [1.5 10]);
+fis = addvar(fis, 'input', 'area', [0 2501]);
+% Funcoes de pertinencia entrada 1 (area)
+fis = addmf(fis, 'input', 1, 'menor', 'trapmf', [0, 0, 748.8, 1000]);
+fis = addmf(fis, 'input', 1, 'maior', 'trapmf', [508.1, 2194, 2501, 2501]);
 
 figure(1)
 plotmf(fis, 'input', 1)
 
-fis = addvar(fis, 'input', 'comida', [0 10]);
-% Funcoes de pertinencia entrada 2 (comida)
-fis = addmf(fis, 'input', 2, 'rancosa', 'trapmf', [0 0 1 3]);
-fis = addmf(fis, 'input', 2, 'deliciosa', 'trapmf', [7 9 10 inf]);
+fis = addvar(fis, 'input', 'perimetro', [0 188.5]);
+% Funcoes de pertinencia entrada 2 (perimetro)
+fis = addmf(fis, 'input', 2, 'menor', 'trapmf', [0, 0, 92.58, 103]);
+fis = addmf(fis, 'input', 2, 'maior', 'trapmf', [85.1, 159.8, 188.5, 188.5]);
 
 figure(2)
 plotmf(fis, 'input', 2)
 
-fis = addvar(fis, 'output', 'gorjeta', [0 30]);
-% Funcoes de pertinencia saida 1 (porcentagem de gorjeta)
-fis = addmf(fis, 'output', 1, 'baixa', 'trimf', [0 5 10]);
-fis = addmf(fis, 'output', 1, 'media', 'trimf', [10 15 20]);
-fis = addmf(fis, 'output', 1, 'generosa', 'trimf', [20 25 30]);
+fis = addvar(fis, 'input', 'uniformidade', [0 11.76]);
+% Funcoes de pertinencia entrada 3 (uniformidade)
+fis = addmf(fis, 'input', 3, 'menor', 'trapmf', [0, 0, 1.669, 2.6]);
+fis = addmf(fis, 'input', 3, 'maior', 'trapmf', [0.65, 6.205, 11.76, 11.76]);
+
+figure(3)
+plotmf(fis, 'input', 3)
+
+fis = addvar(fis, 'input', 'homogeneidade', [0 0.4041]);
+% Funcoes de pertinencia entrada 4 (homogeneidade)
+fis = addmf(fis, 'input', 4, 'menor', 'trapmf', [0, 0, 0.1232, 0.19]);
+fis = addmf(fis, 'input', 4, 'maior', 'trapmf', [0.0295, 0.2168, 0.4041, 0.4041]);
+
+figure(4)
+plotmf(fis, 'input', 4)
+
+fis = addvar(fis, 'output', 'diagnostico', [0 1]);
+% Funcoes de pertinencia saida 1 (diagnostico)
+fis = addmf(fis, 'output', 1, 'benigno', 'trimf', [0 0 1]);
+fis = addmf(fis, 'output', 1, 'maligno', 'trimf', [0 1 1]);
+
+figure(5)
+plotmf(fis, 'output', 1)
+
 
 % Adiconando regras
 % listaRegras = [Mfi1 Mfi2 Mfo1 Peso Operador]
@@ -45,20 +72,36 @@ fis = addmf(fis, 'output', 1, 'generosa', 'trimf', [20 25 30]);
 % Operador Fuzzy AND/OR -> 1 = AND, 2 = OR
 % Cada linha representa uma regra
 listaRegras = [
-    1 1 1 1 2; % Se o servico eh ruim ou a comida eh rancosa, então a gorjeta e baixa
-    2 0 2 1 2; % Se o servico eh bom, então a gorjeta e media
-    3 2 3 1 2  % Se o servico eh excelente ou a comida eh deliciosa, então a gorjeta e generosa
+    1 1 1 1 1 1 1; % Se a area, perimetro, uniformidade e homogeniedade forem menor -> benigno
+    2 2 2 2 2 1 1; % Se a area, perimetro, uniformidade e homogeniedade forem maior -> maligno
     ];
 
 fis = addrule(fis, listaRegras);
 
-entradas = [3 5; 2 7; 4 2];
+celula_resultados = cell(height(dados), 1);
+acertos = 0;
+erros = 0;
+for i = 1:1:height(dados)
+    resultado = evalfis([area(i) perimetro(i) uniformidade(i) homogeniedade(i)], fis);
+    
+    if resultado > 0.5
+       celula_resultados{i} = 'M';
+    else
+       celula_resultados{i} = 'B'; 
+    end
+    
+    
+    % Comparando os resultados
+    if isequal(diagnostico(i), celula_resultados(i))
+        acertos = acertos + 1;
+    end
+end
 
-gorjetas = evalfis([3 8], fis)
+figure(6)
+plotfis(fis)
 
-entradas = evalfis(entradas, fis)
-
-[output,fuzzifiedIn,ruleOut,aggregatedOut,ruleFiring] = evalfis(fis, [3 8])
-
-figure(3)
+figure(7)
 gensurf(fis)
+
+acertos
+precisao_pct = (acertos / height(dados)) * 100
